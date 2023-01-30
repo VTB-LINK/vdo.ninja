@@ -2296,23 +2296,23 @@
 			
 			session.stunServers = [{ urls: ["stun:stun.l.google.com:19302", "stun:stun4.l.google.com:19302"]}]; // google stun servers. default
 			
-			///////////////  ------  Custom basic TURN SETUP SECTION STARTS Here --------
-			// session.configuration = {         // uncomment to disable the default usage of the vdo.ninja turn servers.
-			//	iceServers: session.stunServers,
-			//	sdpSemantics: 'unified-plan'
-			// };
-			// var turn = {}; // Just an example entry for a basic TURN server 
-			// turn.username = "steve";
-			// turn.credential = "justtesting";
-			// turn.urls = ["turn:turn.obs.ninja:443"]; 
-			// session.configuration.iceServers.push(turn);
-			//
-			// turn = {}; // second turn server example entry. 
-			// turn.username = "steve";
-			// turn.credential = "justtesting";
-			// turn.urls = ["turn:turn2.obs.ninja:443"]; 
-			// session.configuration.iceServers.push(turn);
-			/////////////// ------------ END OF TURN SETUP SECTION -------
+			/////////////  ------  Custom basic TURN SETUP SECTION STARTS Here --------
+			session.configuration = {         // uncomment to disable the default usage of the vdo.ninja turn servers.
+				iceServers: session.stunServers,
+				sdpSemantics: 'unified-plan'
+			};
+			var turn = {}; // Just an example entry for a basic TURN server 
+			turn.username = "oldking139";
+			turn.credential = "abdc-f198881ef111";
+			turn.urls = ["turn:turn.vtb.link:3478"]; 
+			session.configuration.iceServers.push(turn);
+			
+			turn = {}; // second turn server example entry. 
+			turn.username = "oldking139";
+			turn.credential = "abdc-f198881ef111";
+			turn.urls = ["turn:turn.vtb.link:3478"]; 
+			session.configuration.iceServers.push(turn);
+			///////////// ------------ END OF TURN SETUP SECTION -------
 
 			/////////////// --------  Alternative custom TURN SETUP SECTION here ---------
 			// Use this section if you plan to use the turn-credentials.php sample and its use-auth-secret and static-auth-secret method, rather than a plain password
