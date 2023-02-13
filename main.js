@@ -246,7 +246,7 @@ async function main(){ // main asyncronous thread; mostly initializes the user s
 	}
 	
 	if (urlParams.has('avatarimg') || urlParams.has('bgimage') || urlParams.has('bgimg')) { // URL or data:base64 image. Becomes local to this viewer only.  This is like &avatar, but slightly different. Just CSS in this case
-		var avatarImg = urlParams.get('avatarimg') || urlParams.get('bgimage') || urlParams.get('bgimg') || false; 
+		var avatarImg = urlParams.get('avatarimg') || urlParams.get('bgimage') || urlParams.get('bgimg') || "./media/avatar.webp"; 
 		if (avatarImg){
 			try {
 				avatarImg = decodeURIComponent(avatarImg);
@@ -256,7 +256,7 @@ async function main(){ // main asyncronous thread; mostly initializes the user s
 				document.documentElement.style.setProperty('--video-background-image', avatarImg);
 			} catch(e){}
 		}
-	}
+	} 
 	
 	if (urlParams.has('background') || urlParams.has('appbg')) { // URL or data:base64 image.  Use &chroma if you want to use a color instead of image.
 		var background = urlParams.get('background') || urlParams.get('appbg') || false; 
@@ -946,13 +946,28 @@ async function main(){ // main asyncronous thread; mostly initializes the user s
 			}
 		} 
 		session.recordLocal = urlParams.get('record');
-
-		if (session.recordLocal != parseInt(session.recordLocal)) {
+		
+		if ((session.recordLocal==="false") || (session.recordLocal==="off")){
+			session.record = false;
+			session.recordLocal = false;
+		} else if (session.recordLocal != parseInt(session.recordLocal)) {
 			session.recordLocal = 6000;
 		} else {
 			session.recordLocal = parseInt(session.recordLocal);
 		}
 	}
+	
+	if (session.record === false){
+		getById("recordLocalbutton").classList.add("hidden");
+		getById("recordLocalScreenbutton").classList.add("hidden");
+		try{
+			document.querySelectorAll('[data-action-type^="record"]').forEach(ele=>{ele.remove();delete ele;});
+			document.querySelectorAll('[data-action="Record"]').forEach(ele=>{ele.parentNode.remove();delete ele.parentNode;});
+		} catch(e){
+			errorlog(e);
+		}
+	}
+	
 	if (urlParams.has('autorecord')) {
 		session.autorecord=true;
 		if (session.recordLocal===false){
@@ -2364,11 +2379,19 @@ async function main(){ // main asyncronous thread; mostly initializes the user s
 	if (urlParams.has('cursor') || urlParams.has('screensharecursor')) {
 		session.screensharecursor = true;
 	}
-
+	
+	if (urlParams.has('distort')) {
+		session.voicechanger = 1;
+	}
 	
 	if (urlParams.has('dtx') || urlParams.has('usedtx')) {
 		session.dtx = true;
 		session.cbr = 0; // no point dtx on if cbr is on, right?
+	}
+	
+	if (urlParams.has('youtube')) { // Set with a Youtube v3 clientID + "," + API key, then run YoutubeChatInterface();
+		session.youtubeKey = urlParams.get('youtube') || "";
+		//YoutubeChatInterface(); // queries Youtube for chat messages. Forwards them to the parent IFRAME only at the moment.
 	}
 	
 	if (urlParams.has('vbr')) {
@@ -2990,7 +3013,7 @@ async function main(){ // main asyncronous thread; mostly initializes the user s
 		log(session.frameRate);
 	}
 	
-	if (urlParams.has('tz')){
+	if (urlParams.has('tz')){ // being depreciated, but still works with meshcast (no longer turn)
 		session.tz = urlParams.get('tz');
 		if ((session.tz === null) || (session.tz === "")){
 			session.tz = false;
@@ -3477,7 +3500,7 @@ async function main(){ // main asyncronous thread; mostly initializes the user s
 	}
 
 	if (urlParams.has('privacy') || urlParams.has('private') || urlParams.has('relay')) { // please only use if you are also using your own TURN service.
-		session.privacy = true;
+		session.privacy = urlParams.get('privacy') || urlParams.get('private') || urlParams.get('relay') || true;
 		
 		try { // I'll re-apply this in the setupSpeedtest() promise callback, just to be case.
 			if (session.configuration){ // this needs to set last, otherwise it might be overridden 
@@ -3741,13 +3764,40 @@ async function main(){ // main asyncronous thread; mostly initializes the user s
 		}
 	}
 	if (urlParams.has('clock')){
+		session.showTime = true;
 		if (urlParams.get('clock') === "false"){
 			session.showTime = false;
 		} else if (urlParams.get('clock') === "0"){
 			session.showTime = false;
-		} else {
-			session.showTime = true;
+		} else if (urlParams.get('clock') === "1"){
+			getById("overlayClockContainer2").classList.add("top");
+			getById("overlayClockContainer2").classList.add("left");
+		} else if (urlParams.get('clock') === "7"){
+			getById("overlayClockContainer2").classList.add("bottom");
+			getById("overlayClockContainer2").classList.add("left");
+		} else if (urlParams.get('clock') === "4"){
+			getById("overlayClockContainer2").classList.add("vmiddle");
+			getById("overlayClockContainer2").classList.add("left");
+		} else if (urlParams.get('clock') === "2"){
+			getById("overlayClockContainer2").classList.add("top");
+			getById("overlayClockContainer2").classList.add("hmiddle");
+		} else if (urlParams.get('clock') === "8"){
+			getById("overlayClockContainer2").classList.add("bottom");
+			getById("overlayClockContainer2").classList.add("hmiddle");
+		} else if (urlParams.get('clock') === "5"){
+			getById("overlayClockContainer2").classList.add("vmiddle");
+			getById("overlayClockContainer2").classList.add("hmiddle");
+		} else if (urlParams.get('clock') === "3"){
+			getById("overlayClockContainer2").classList.add("top");
+			getById("overlayClockContainer2").classList.add("right");
+		} else if (urlParams.get('clock') === "9"){
+			getById("overlayClockContainer2").classList.add("bottom");
+			getById("overlayClockContainer2").classList.add("right");
+		} else if (urlParams.get('clock') === "6"){
+			getById("overlayClockContainer2").classList.add("vmiddle");
+			getById("overlayClockContainer2").classList.add("right");
 		}
+		
 	} else if (session.cleanOutput){
 		session.showTime = false;
 	}
@@ -4219,7 +4269,11 @@ async function main(){ // main asyncronous thread; mostly initializes the user s
 	//  Please contact steve on discord.vdo.ninja if you'd like this iFRAME tweaked, expanded, etc -- it's updated based on user request
 	
 	session.remoteInterfaceAPI = function(e) { // iFRAME api support 
-		warnlog(e);
+		if (!e.data || (typeof e.data !== "object")){
+			warnlog(e);
+			return;
+		}
+		log(e);
 		try {
 			if ("function" in e.data) { // these are calling in-app functions, with perhaps a callback -- TODO: add callbacks
 				var ret = null;
@@ -4453,6 +4507,14 @@ async function main(){ // main asyncronous thread; mostly initializes the user s
 			}
 		}
 		
+		if ("enableYouTube" in e.data){ // panning adjusts the stereo pan , although current its UUID based. can add stream ID based if requested.
+			if (typeof e.data.enableYouTube == "string"){
+				session.youtubeKey = e.data.enableYouTube;
+			} else if (!session.youtubeKey){
+				errorlog("No Youtube Key provided");
+			}
+			YoutubeChatInterface();
+		}
 		
 		if ("nextSlide" in e.data){ // panning adjusts the stereo pan , although current its UUID based. can add stream ID based if requested.
 			nextSlide();
