@@ -102,7 +102,22 @@ var miscTranslations = {
 	"no-audio-source-detected": "No Audio Source was detected.\n\nIf you were wanting to capture an Application's Audio, please see:\nhttps://docs.vdo.ninja/help/guides-and-how-tos#audio for some guides.",
 	"viewer-count": "Total outbound p2p connections of this remote stream",
 	"enter-url-for-widget": "Enter a URL for a page to embed as a sidebar",
-	"director-password" : "Enter the main director's password"
+	"director-password" : "Enter the main director's password",
+	"vision-disabled": "The Director has disabled your vision temporarily<br /><br ><center><i style='font-size:500%;' class='las la-eye-slash'></i></center>",
+	"invalid-remote-code": "Invalid remote control code.\n\nUse the field below to try again with a different passcode.",
+	"invalid-remote-code-obs": "Invalid remote control code.\n\nThe remote OBS system needs a matching passcode set using &remote.\n\nSee the documentation for help..",
+	"request-rejected-obs": "The request was rejected.\n\nThe remote OBS system needs a matching passcode set using &remote.\n\nSee the documentation for help.",
+	"remote-token-rejected": "The remote request failed; the &remote token did not match or the remote user does not allow remote control.",
+	"remote-control-failed": "The remote control request failed.",
+	"remote-peer-connected": "Remote peer connected to video stream.\n\nConnection to handshake server being killed on request. This increases security, but the peer will not be able to reconnect automatically on connection failure.\n\nPress OK to start the stream!",
+	"director-denied": "The main director denied you as a co-director",
+	"only-main-director": "Only the main director can transfer this guest",
+	"request-failed": "The request failed; you can't apply this action",
+	"tokens-did-not-match": "The remote request failed; the remote token did not match or the remote user does not allow remote control.",
+	"token-not-director": "The request failed; the remote user did not recognize you as the director",
+	"approved-as-director": "The director approved you as a co-director",
+	"you-are-a-codirector": "You are a co-director of this room; you have partial director control assigned to you.",
+	"this-is-you": "This is you, a co-director.<br />You are also a performer."
 };
 
 // function log(msg){ // uncomment to enable logging.
@@ -2988,7 +3003,7 @@ function setupIncomingVideoTracking(v, UUID){  // video element.
 	
 	
 	if (session.rpcs[UUID].stats.info && ("remote" in session.rpcs[UUID].stats.info) && session.rpcs[UUID].stats.info.remote){
-		v.addEventListener("wheel", session.remoteFocusZoomRequest);  //  just remote focus
+		v.addEventListener("wheel", remoteFocusZoomRequest);  //  just remote focus
 	}
 
 	if (v.controls == false){
@@ -3063,6 +3078,18 @@ function setupIncomingVideoTracking(v, UUID){  // video element.
 	
 	setTimeout(processStats, 100, UUID);
 }
+
+function remoteFocusZoomRequest(event){
+	event.preventDefault();
+	var scale = parseFloat(event.deltaY * -0.001);
+	log(event.currentTarget);
+	
+	if ((event.ctrlKey)||(event.metaKey)){  // focus
+		session.requestFocusChange(scale, event.currentTarget.dataset.UUID);
+	} else { // zoom
+		session.requestZoomChange(scale, event.currentTarget.dataset.UUID);
+	}
+};
 
 function mediaSourceUpdated(UUID, streamID){
 	pokeIframeAPI("new-track-added", true, UUID, streamID); //  videoTrack is whether video. audio will be false I guess.
@@ -5152,31 +5179,17 @@ function updateMixerRun(e=false){  // this is the main auto-mixing code.  It's a
 						button.id = "button_"+vid.id;
 						button.dataset.button = true;
 						if (soloVideo){
-							button.innerHTML = "<img src='./media/sd.svg' style='user-select: none;background-color:#0007;width:4vh' aria-hidden='true' />";
+							button.innerHTML = "<img src='./media/sd.svg'  class='fullwindowButtonimg' aria-hidden='true' />";
 							button.title = "Show all active videos togethers";
 							button.style.visibility = "visible";
 						} else if ((mpl>1) || session.fullscreenButton){ // with session.fullscreenButton we hide the actuall full screen button, so this replaces it
-							button.innerHTML = "<img src='./media/hd.svg' style='user-select: none;background-color:#0007;width:4vh' aria-hidden='true' />";
+							button.innerHTML = "<img src='./media/hd.svg' class='fullwindowButtonimg' aria-hidden='true' />";
 							button.title = "Enlarge video and increase its clarity";
 							button.style.visibility = "visible";
 						} else {
 							button.style.visibility = "hidden";
 						}
-						button.style.transition = "opacity 0.3s"
-						button.style.width ="4vh";
-						button.style.height = "4vh";
-						button.style.maxWidth ="30px";
-						button.style.maxHeight = "30px";
-						button.style.minWidth ="15px";
-						button.style.minHeight = "15px";
-						button.style.position = "absolute";
-						button.style.display="none";
-						//button.style.opacity="10%";
-						button.style.zIndex="6";
-						button.style.right = "4vh";//(Math.ceil(w/rw) -30 - 30 + offsetx+Math.floor(((i%rw)+0)*w/rw))+"px";
-						button.style.top  = "4vh";//(  offsety + 30 + Math.floor((Math.floor(i/rw)+0)*h/rh + hi))+"px";
-						button.style.color = "white";
-						button.style.cursor = "pointer";
+						button.classList.add("fullwindowButton");
 						
 						if (vid.id == "videosource"){
 							button.onclick = function(event){
@@ -5269,26 +5282,14 @@ function updateMixerRun(e=false){  // this is the main auto-mixing code.  It's a
 						button.id = "button_videosource";
 						button.dataset.button = true;
 						if (soloVideo){
-							button.innerHTML = "<img src='./media/sd.svg' style='background-color:#0007;width:4vh' aria-hidden='true' />";
+							button.innerHTML = "<img src='./media/sd.svg' class='fullwindowButtonimg' aria-hidden='true' />";
 							button.title = "Show all active videos togethers";
 							button.style.display="unset";
 						} else {
 							button.style.visibility = "hidden";
 							button.style.display="none";
 						}
-						button.style.transition = "opacity 0.3s"
-						button.style.width ="4vh";
-						button.style.height = "4vh";
-						button.style.maxWidth ="30px";
-						button.style.maxHeight = "30px";
-						button.style.minWidth ="15px";
-						button.style.minHeight = "15px";
-						button.style.position = "absolute";
-						button.style.zIndex="6";
-						button.style.right = "4vh";//(Math.ceil(w/rw) -30 - 30 + offsetx+Math.floor(((i%rw)+0)*w/rw))+"px";
-						button.style.top  = "4vh";//(  offsety + 30 + Math.floor((Math.floor(i/rw)+0)*h/rh + hi))+"px";
-						button.style.color = "white";
-						button.style.cursor = "pointer";
+						button.classList.add("fullwindowButton");
 						
 						button.onclick = function(event){
 							event.stopPropagation();
@@ -10903,56 +10904,62 @@ function getDetailedState(sid=false){
 			item.streamID = session.rpcs[UUID].streamID;
 			item.label = session.rpcs[UUID].label;
 			item.group = session.rpcs[UUID].group;
-			item.videoMuted = session.rpcs[UUID].videoMuted;
-			item.muted = session.rpcs[UUID].remoteMuteState;
 			item.iframeSrc = session.rpcs[UUID].iframeSrc;
 			item.localStream = false;
+			item.muted = session.rpcs[UUID].remoteMuteState;
+			item.videoMuted = session.rpcs[UUID].videoMuted;
+			item.videoVisible = session.rpcs[UUID].videoElement && session.rpcs[UUID].videoElement.checkVisibility();
+			if (session.rpcs[UUID].videoElement){
+				item.videoVolume = session.rpcs[UUID].videoElement.volume;
+			}
+			item.iframeVisible = session.rpcs[UUID].iframeVisible && session.rpcs[UUID].iframeVisible.checkVisibility();
+					
 			if (session.directorList.indexOf(UUID)>=0){
 				item.director = true;
 			} else {
 				item.director = false;
 			}
 			try {
-				if (guestFeeds){
-					var lock = parseInt(document.getElementById("position_"+UUID).dataset.locked);
-					if (lock){
-						item.position = lock; // probably should make a universal function to do this, for all lock requesting
-					} else {
-						var child = document.getElementById('container_'+UUID);
-						if (child){
-							var parent = child.parentNode;
-							if (parent.id == "guestFeeds"){
-								item.position = Array.prototype.indexOf.call(parent.children, child) + 1;
+				if (session.director){
+					if (guestFeeds){
+						var lock = parseInt(document.getElementById("position_"+UUID).dataset.locked);
+						if (lock){
+							item.position = lock; // probably should make a universal function to do this, for all lock requesting
+						} else {
+							var child = document.getElementById('container_'+UUID);
+							if (child){
+								var parent = child.parentNode;
+								if (parent.id == "guestFeeds"){
+									item.position = Array.prototype.indexOf.call(parent.children, child) + 1;
+								}
 							}
 						}
 					}
-				}
-				
-				var scenes = getById("container_" + UUID).querySelectorAll('[data-action-type="addToScene"][data-scene][data--u-u-i-d="'+UUID+'"]');
-				var sceneState = {};
-				for (var i=0;i<scenes.length;i++){
-					if (scenes[i].value==1){
-						sceneState[scenes[i].dataset.scene] = true;
-					} else {
-						sceneState[scenes[i].dataset.scene] = false;
-					}
-				}
-				item.scenes = sceneState;
-				
-				var others = getById("container_" + UUID).querySelectorAll('[data-action-type][data--u-u-i-d="'+UUID+'"]');
-				var otherState = {};
-				for (var i=0;i<others.length;i++){
-					if ("scene" in others[i].dataset){continue;}
-					if ("toggle-group" == others[i].dataset.actionType){continue;}
-					if ("value" in others[i]){
-						if (others[i].value!==""){
-							otherState[others[i].dataset.actionType] = others[i].value;
+					var scenes = getById("container_" + UUID).querySelectorAll('[data-action-type="addToScene"][data-scene][data--u-u-i-d="'+UUID+'"]');
+					var sceneState = {};
+					for (var i=0;i<scenes.length;i++){
+						if (scenes[i].value==1){
+							sceneState[scenes[i].dataset.scene] = true;
+						} else {
+							sceneState[scenes[i].dataset.scene] = false;
 						}
 					}
+					item.scenes = sceneState;
+					var others = getById("container_" + UUID).querySelectorAll('[data-action-type][data--u-u-i-d="'+UUID+'"]');
+					var otherState = {};
+					for (var i=0;i<others.length;i++){
+						if ("scene" in others[i].dataset){continue;}
+						if ("toggle-group" == others[i].dataset.actionType){continue;}
+						if ("value" in others[i]){
+							if (others[i].value!==""){
+								otherState[others[i].dataset.actionType] = others[i].value;
+							}
+						}
+					}
+					item.others = otherState;
 				}
-				item.others = otherState;
-				
 			} catch(e){}
+			
 			streamList[session.rpcs[UUID].streamID] = item;
 		}
 	}
@@ -10960,22 +10967,26 @@ function getDetailedState(sid=false){
 	if (sid && (sid!==session.streamID)){return streamList;}
 	
 	streamList[session.streamID] = {}; 
-	var sceneState = {};
+	
 	
 	try {
-		var scenes = getById("container_director").querySelectorAll('[data-action-type="addToScene"][data-scene]');
-		for (var i=0;i<scenes.length;i++){
-			if (scenes[i].value==1){
-				sceneState[scenes[i].dataset.scene] = true;
-			} else {
-				sceneState[scenes[i].dataset.scene] = false;
+		if (session.director){
+			var sceneState = {};
+			var scenes = getById("container_director").querySelectorAll('[data-action-type="addToScene"][data-scene]');
+			for (var i=0;i<scenes.length;i++){
+				if (scenes[i].value==1){
+					sceneState[scenes[i].dataset.scene] = true;
+				} else {
+					sceneState[scenes[i].dataset.scene] = false;
+				}
 			}
+			streamList[session.streamID].scenes = sceneState;
 		}
 	} catch(e){}
 	streamList[session.streamID].label = session.label;
 	streamList[session.streamID].group = session.group;
 	streamList[session.streamID].groupView = session.groupView;
-	streamList[session.streamID].scenes = sceneState;
+	streamList[session.streamID].scene = session.scene;
 	streamList[session.streamID].streamID = session.streamID;
 	streamList[session.streamID].iframeSrc = session.iframeSrc;
 	streamList[session.streamID].director = session.directorState; //session.director is what you want to be; session.directorState is what you are
@@ -10984,10 +10995,11 @@ function getDetailedState(sid=false){
 	streamList[session.streamID].seeding = session.seeding;
 	streamList[session.streamID].muted = session.muted;
 	streamList[session.streamID].videoMuted = session.videoMuted;
+	streamList[session.streamID].videoVisible = session.videoElement && session.videoElement.checkVisibility();
 	streamList[session.streamID].speakerMuted = session.speakerMuted;
 	streamList[session.streamID].position = null;
 	
-	if (session.showDirector){
+	if (session.showDirector && session.director){
 		var child = document.getElementById('container_director');
 		if (child){
 			var parent = child.parentNode;
@@ -11382,7 +11394,7 @@ function toggleClock(){
 	if (session.showTime){
 		clearInterval(session.showTime);
 		session.showTime = null;
-		var clock = document.getElementById("overlayClock2");
+		var clock = getById("overlayClock2");
 		clock.ctx = null;
 		clock.canvas = null;
 		
@@ -11399,7 +11411,7 @@ function toggleClock(){
 	} else {
 		var time = new Date();
 		
-		var clock = document.getElementById("overlayClock2");
+		var clock = getById("overlayClock2");
 		if (clock.ctx){
 			clock.ctx.beginPath();
 			clock.ctx.rect(0, 0, 230, 40);
@@ -11416,7 +11428,7 @@ function toggleClock(){
 		session.showTime = setInterval(function(){
 			var time = new Date();
 			
-			var clock = document.getElementById("overlayClock2");
+			var clock = getById("overlayClock2");
 			if (clock.ctx){
 				clock.ctx.beginPath();
 				clock.ctx.rect(0, 0, 230, 40);
@@ -13419,6 +13431,68 @@ function outboundAudioPipeline(){ // this function isn't letting me change the a
 				webAudio.lowcut1.connect(webAudio.lowcut2);
 				webAudio.lowcut2.connect(webAudio.lowcut3);
 				anonNode = webAudio.lowcut3;
+			}
+			
+			
+			if (session.voicechanger) { 
+			
+				
+				function makeDistortionCurve(amount=10) {
+					var sampleRate = audioContext.sampleRate || 48000;
+					var curve = new Float32Array(sampleRate);
+					var x;
+					for (let i = 0; i < sampleRate; ++i ) {
+						x = i * 2 / sampleRate - 1;
+						curve[i] = ( 3 + amount ) * x * 20 *  (Math.PI / 180) / (Math.PI + amount * Math.abs(x));
+					}
+					return curve;
+				}
+				
+				let waveShaper = audioContext.createWaveShaper();
+				waveShaper.curve = makeDistortionCurve(5);
+				
+				var realCoeffs = new Float32Array([1,0]);
+				var imagCoeffs = new Float32Array([0,1]);
+
+				var numCoeffs = 20; // The more coefficients you use, the better the approximation
+				var realCoeffs = new Float32Array(numCoeffs);
+				var imagCoeffs = new Float32Array(numCoeffs);
+
+				realCoeffs[0] = 0.5;
+				for (var i = 1; i < numCoeffs; i++) { // note i starts at 1
+					imagCoeffs[i] = 1 / (i * Math.PI) * (1  - Math.random()/2);
+				}
+				
+				let oscillator = audioContext.createOscillator();
+				oscillator.frequency.value = 10;
+				const wave = audioContext.createPeriodicWave(realCoeffs, imagCoeffs);
+				oscillator.setPeriodicWave(wave);
+				
+				let oscillatorGain = audioContext.createGain();
+				oscillatorGain.gain.value = 0.005;
+				oscillator.connect(oscillatorGain);
+				oscillator.start(0);
+				
+				let delay = audioContext.createDelay();
+				delay.delayTime.value = 0.01;
+				oscillatorGain.connect(delay.delayTime);
+				
+				let lowEQ = audioContext.createBiquadFilter();
+				lowEQ.type = "peaking";
+				lowEQ.frequency.value = 200;
+				lowEQ.Q.value = 0.5;
+				lowEQ.gain.value = 6;
+				
+				let mid = audioContext.createBiquadFilter();
+				mid.type = "peaking";
+				mid.frequency.value = 500;
+				mid.Q.value = 0.5;
+				mid.gain.value = -10;
+				anonNode.connect(delay)
+				delay.connect(waveShaper)
+				waveShaper.connect(mid);
+				mid.connect(lowEQ);
+				anonNode = lowEQ;
 			}
 
 
@@ -15919,7 +15993,7 @@ function createControlBox(UUID, soloLink, streamID) {
 					if (value<100){
 						session.rpcs[UUID].batteryMeter.classList.remove("hidden");
 					}
-					session.rpcs[UUID].batteryMeter.title = value+"% battery remaining";
+					session.rpcs[UUID].batteryMeter.title = (Math.round(value*10)/10)+"% battery remaining";
 				}
 			}
 			if (session.rpcs[UUID].stats.info && ("plugged_in" in session.rpcs[UUID].stats.info) && (session.rpcs[UUID].stats.info.plugged_in===false)){
@@ -16549,7 +16623,7 @@ function gotDevices(deviceInfos) {
 			delete session.store.SelectedVideoInputDevices;
 		}
 		
-		if (session.audioDevice){
+		if (session.audioDevice && (typeof session.audioDevice == "object")){
 			var adMatch = [...session.audioDevice];
 		} else if (session.store && session.store.SelectedAudioInputDevices && session.store.SelectedAudioInputDevices.length){
 			var adMatch = [...session.store.SelectedAudioInputDevices];
@@ -29033,6 +29107,8 @@ var recordingBitratePromise = false;
 var defaultRecordingBitrate = false;
 async function recordVideo(target, event = null, videoKbps = false) { // event.currentTarget,this.parentNode.parentNode.dataset.UUID
 
+	if (session.record === false){warnlog("recordings are disabled by decree of thy host magistrate");}
+
 	var UUID = target.dataset.UUID;
 	
 	if (!UUID){return;}
@@ -29576,6 +29652,9 @@ function setupSensorData(pollrate = 30) {
 
 
 function recordLocalVideo(action = null, videoKbps = 6000, remote=false) { // event.currentTarget,this.parentNode.parentNode.dataset.UUID
+	
+	if (session.record === false){warnlog("recordings are disabled by decree of thy host magistrate");}
+	
 	var audioKbps = false;
 	if (remote){
 		var video = remote;
@@ -30807,6 +30886,8 @@ function audioMeterGuest(mediaStreamSource, UUID, trackid){
 				}
 			}
 			
+			
+			
 			try{
 				clearTimeout(session.rpcs[UUID].inboundAudioPipeline[trackid].analyser.interval);
 				session.rpcs[UUID].inboundAudioPipeline[trackid].analyser.interval = setTimeout(function(){updateLevels();},100);
@@ -30815,12 +30896,17 @@ function audioMeterGuest(mediaStreamSource, UUID, trackid){
 			}
 			
 			if (session.style==3 || session.meterStyle){ // overrides style
-				// continue
+				if (session.meterStyle==4){
+					if (session.rpcs[UUID].videoElement){
+						session.rpcs[UUID].videoElement.dataset.loudness = total;
+					}
+					return; // this is cause we are using the data-loudness
+				}
 			} else if (session.scene!==false){ // if a scene, cancel
 				return;
 			} else if (session.audioMeterGuest===false){  // don't show if we just want the volume levels
 				return;
-			}
+			} 
 			
 			if (session.rpcs[UUID].voiceMeter){
 				session.rpcs[UUID].voiceMeter.dataset.level = total;
@@ -31059,6 +31145,144 @@ async function loadScript(url, callback=false){
 		document.head.appendChild(script);
 	}
 	return await promise;
+}
+
+var tokenClient=false;
+function YoutubeChatInterface(){ // this lets us query Youtube for chat messages, but its quota limited :(
+	if (!tokenClient){
+		tokenClient=true;
+	} else {
+		return;
+	}
+	
+	var gisInited = false;
+	var gapiInited = false;
+	var busy = 0;
+
+	function handleAuthClick() {
+		tokenClient.callback = async (resp) => {
+			if (resp.error){
+				errorlog(resp.error);
+			}
+			closeModal();
+			var auths = gapi.client.getToken();
+			if (auths){
+				setStorage("YoutubeAuth", JSON.stringify(auths), auths.expires_in || 3600);
+			}
+			listBroadcasts();
+		};
+		var saved = getStorage("YoutubeAuth");
+		
+		if (saved){
+			gapi.client.setToken(JSON.parse(saved));
+			listBroadcasts();
+		} else if (gapi.client.getToken() === null) {
+			warnUser("<button onclick='(function(){tokenClient.requestAccessToken({prompt: \"consent\"});})()'>Grant Access to Youtube Chat</button>", false, false);
+		} else {
+			warnUser("<button onclick='(function(){this.remove();tokenClient.requestAccessToken({prompt: \"\"});})()'>Grant Access to Youtube Chat</button>", false, false);	
+		}
+	}
+	
+	function maybeEnableButtons() {
+		if (gapiInited && gisInited){
+			handleAuthClick();
+		}
+	}
+	
+	async function initializeGapiClient() {
+		await gapi.client.init({
+			apiKey: session.youtubeKey.split(",")[1],
+			discoveryDocs: ['https://www.googleapis.com/discovery/v1/apis/youtube/v3/rest'],
+		});
+		gapiInited = true;
+		maybeEnableButtons();
+	}
+
+	function handleSignoutClick() {
+		let token = gapi.client.getToken();
+		if (token !== null) {
+			google.accounts.oauth2.revoke(token.access_token);
+			gapi.client.setToken('');
+		}
+	}
+
+	async function listBroadcasts() {
+		try {
+			var response = await gapi.client.youtube.liveBroadcasts.list({
+				"broadcastStatus": "active"
+			});
+		} catch (err) {
+			errorlog(err);
+			return;
+		}
+		
+		let broadcasts = response.result.items;
+		if (!broadcasts || broadcasts.length == 0) {
+			return;
+		}
+		broadcasts.forEach(broadcast=>{
+			setTimeout(function(liveChatId){
+				listMessages(liveChatId);
+				busy+=1;
+			},1000, broadcast.snippet.liveChatId);
+		});
+	}
+	
+	async function listMessages(liveChatId, pageToken = false) {
+		try {
+			if (pageToken){
+				var response = await gapi.client.youtube.liveChatMessages.list({
+				  "liveChatId": liveChatId,
+				  "part": ["id", "snippet", "authorDetails"],
+				  "pageToken": pageToken
+				});
+			} else {
+				var response = await gapi.client.youtube.liveChatMessages.list({
+				  "liveChatId": liveChatId,
+				  "part": ["id", "snippet", "authorDetails"]
+				});
+			}
+			
+			var messages = response.result.items;
+			messages.forEach(msg =>{
+				pokeIframeAPI("YoutubeChat",msg);
+			});
+			
+			var polling = response.result.pollingIntervalMillis;
+			var pageToken = response.result.nextPageToken;
+			
+			if (busy>1){
+				// popular eh?  Lets quickly check for more.
+			} else if (busy>0){ // a message ! hurrah
+				if (polling<2000){polling=2000;} // Was it just luck?
+			} else if (polling<5000){
+				polling=5000; // let's not spam the api, cause we know there isn't anything waiting..
+			}
+			busy=0; // reset
+			setTimeout(function(liveChatId,pageToken){
+				listMessages(liveChatId, pageToken);
+			}, polling, liveChatId, pageToken)
+			
+		} catch (err) {
+			return;
+		}
+	}
+	
+	function gisLoaded() {
+		tokenClient = google.accounts.oauth2.initTokenClient({
+			client_id: session.youtubeKey.split(",")[0],
+			scope: 'https://www.googleapis.com/auth/youtube',
+			callback: '',
+		});
+		gisInited = true;
+		maybeEnableButtons();
+	}
+	function gapiLoaded() {
+		gapi.load('client', initializeGapiClient);
+	}
+	
+	loadScript("https://apis.google.com/js/api.js",gapiLoaded);
+	loadScript("https://accounts.google.com/gsi/client",gisLoaded);
 }
 
 function loadTensorflowJS(){
