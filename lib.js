@@ -500,6 +500,7 @@ function playAllVideos(){
 	}
 	
 	for (var i in session.rpcs){
+		if (session.rpcs[i].whip){continue;}
 		try{
 			if (session.rpcs[i].videoElement){
 				log("I: "+i);
@@ -618,6 +619,7 @@ function createVideoElement(){
 		v.volume = session.volume; // setting default volume
 		log("setting volume to manual");
 	}
+	
 	return v;
 }
 
@@ -683,7 +685,7 @@ async function delay(ms) {
 }
 
 var Prompts = {};
-async function promptAlt(inputText, block=false, asterix=false, value=false){
+async function promptAlt(inputText, block=false, asterix=false, value=false, time=false){
 	var result = null;
 	if (session.beepToNotify){
 		playtone();
@@ -709,41 +711,80 @@ async function promptAlt(inputText, block=false, asterix=false, value=false){
 			type = "password";
 		}
 		
-		
-		modalTemplate =
-			`<div id="modal_${promptID}" class="promptModal" style="z-index:${zindex + 2}">	
-				<div class="promptModalInner">
-					<span id="close_${promptID}" class='modalClose' data-pid="${promptID}">×</span>
-					<span class='promptModalMessage'>${inputText}</span>
-					<input id="input_${promptID}" autocorrect="off" autocapitalize="none" data-pid="${promptID}"  type="${type}" class="largeTextEntry" />
-					<button id="submit_${promptID}" data-pid="${promptID}" style="width:120px; background-color: #fff; position: relative;border: 1px solid #999; margin: 0 0 0 55px;" data-translate='ok'>✔ OK</button>
-					<button id="cancel_${promptID}" data-pid="${promptID}" style="width:120px; background-color: #fff; position: relative;border: 1px solid #999; margin: 0;" data-translate='cancel'>❌ Cancel</button>
+		if (time){
+			modalTemplate =
+				`<div id="modal_${promptID}" class="promptModal" style="z-index:${zindex + 2}">	
+					<div class="promptModalInner">
+						<span id="close_${promptID}" class='modalClose' data-pid="${promptID}">×</span>
+						<span class='promptModalMessage' style='margin:20px'>${inputText}</span>
+						<input id="input_${promptID}" title="minutes" autocorrect="off" autocapitalize="none" data-pid="${promptID}" value="0" style="width:50px;padding:4px;margin:4px;" min="0" type="number" /> minutes, 
+						<input id="input_${promptID}_sec"  title="seconds" autocorrect="off" autocapitalize="none" data-pid="${promptID}" value="0"  style="width:50px;padding:4px;margin:4px;" max="59" min="0" type="number" /> seconds 
+						<button id="submit_${promptID}" data-pid="${promptID}" style="width:120px; background-color: #fff; position: relative;border: 1px solid #999; margin: 0 0 0 10px" data-translate='ok'>✔ OK</button>
+						<button id="cancel_${promptID}" data-pid="${promptID}" style="width:120px; background-color: #fff; position: relative;border: 1px solid #999; margin: 0;" data-translate='cancel'>❌ Cancel</button>
+						<br /><br />
+					</div>
 				</div>
-			</div>
-			<div id="modalBackdrop_${promptID}" class="${backdropClass}" style="z-index:${zindex + 1}"></div>`;
-
+				<div id="modalBackdrop_${promptID}" class="${backdropClass}" style="z-index:${zindex + 1}"></div>`;
+		} else {
+			modalTemplate =
+				`<div id="modal_${promptID}" class="promptModal" style="z-index:${zindex + 2}">	
+					<div class="promptModalInner">
+						<span id="close_${promptID}" class='modalClose' data-pid="${promptID}">×</span>
+						<span class='promptModalMessage'>${inputText}</span>
+						<input id="input_${promptID}" autocorrect="off" autocapitalize="none" data-pid="${promptID}"  type="${type}" class="largeTextEntry" />
+						<button id="submit_${promptID}" data-pid="${promptID}" style="width:120px; background-color: #fff; position: relative;border: 1px solid #999; margin: 0 0 0 55px;" data-translate='ok'>✔ OK</button>
+						<button id="cancel_${promptID}" data-pid="${promptID}" style="width:120px; background-color: #fff; position: relative;border: 1px solid #999; margin: 0;" data-translate='cancel'>❌ Cancel</button>
+					</div>
+				</div>
+				<div id="modalBackdrop_${promptID}" class="${backdropClass}" style="z-index:${zindex + 1}"></div>`;
+		}
 
 		document.body.insertAdjacentHTML("beforeend", modalTemplate); // Insert modal at body end
 		
 		document.getElementById("input_"+promptID).focus();
 		
 		if (value!==false){
-			document.getElementById("input_"+promptID).value = value;
+			if (time){
+				document.getElementById("input_"+promptID).value = parseInt(value/60);
+				document.getElementById("input_"+promptID+"_sec").value = parseInt(value)%60;
+			} else {
+				document.getElementById("input_"+promptID).value = value;
+			}
 		}
 		
-		document.getElementById("input_"+promptID).addEventListener("keyup", function(event) {
-			if (event.key === "Enter") {
-				var pid = event.target.dataset.pid;
-				result = document.getElementById("input_"+pid).value;
-				document.getElementById("modal_"+pid).remove();
-				document.getElementById("modalBackdrop_"+pid).remove();
-				Prompts[pid].resolve();
-			}
-		});
+		
+		if (!time){
+			document.getElementById("input_"+promptID).addEventListener("keyup", function(event) {
+				if (event.key === "Enter") {
+					var pid = event.target.dataset.pid;
+					result = document.getElementById("input_"+pid).value;
+					document.getElementById("modal_"+pid).remove();
+					document.getElementById("modalBackdrop_"+pid).remove();
+					Prompts[pid].resolve();
+				}
+			});
+		} else {
+			document.getElementById("input_"+promptID).addEventListener("keyup", function(event) {
+				if (event.key === "Enter") {
+					document.getElementById("input_"+promptID+"_sec").focus();
+				}
+			});
+			document.getElementById("input_"+promptID+"_sec").addEventListener("keyup", function(event) {
+				if (event.key === "Enter") {
+					document.getElementById("submit_"+promptID).focus();
+				}
+			});
+		}
+		
 
 		document.getElementById("submit_"+promptID).addEventListener("click", function(event){
 			var pid = event.target.dataset.pid;
-			result = document.getElementById("input_"+pid).value;
+			if (time){
+				result = parseInt(document.getElementById("input_"+pid+"_sec").value) +  parseInt(document.getElementById("input_"+pid).value)*60;
+			} else {
+				result = document.getElementById("input_"+pid).value;
+			}
+			
 			document.getElementById("modal_"+pid).remove();
 			document.getElementById("modalBackdrop_"+pid).remove();
 			Prompts[pid].resolve();
@@ -1195,6 +1236,8 @@ session.obsStateSync = function(data2send=false, uid=false){
 		}
 	}
 	
+	
+	
 	for (var UUID in session.rpcs){
 		if (uid && (uid!==UUID)){continue;} // target just a single connection.
 		
@@ -1215,6 +1258,18 @@ session.obsStateSync = function(data2send=false, uid=false){
 				msg.obsState = {};
 				msg.obsState[data2send] = session.obsState[data2send];
 			}
+		}
+		
+		if (session.filterOBSscenes && msg.obsState && msg.obsState.details && msg.obsState.details.scenes && msg.obsState.details.scenes.length){
+			var scenes = [];
+			msg.obsState.details.scenes.forEach(scene=>{
+				if (session.filterOBSscenes && session.filterOBSscenes.length){
+					if (session.filterOBSscenes.includes(scene)){
+						scenes.push(scene);
+					}
+				}
+			});
+			msg.obsState.details.scenes = scenes;
 		}
 		
 		if (session.optimize!==false){
@@ -1495,7 +1550,7 @@ function manageSceneState(data, UUID){ // incoming obs details
 			control =  parseInt(session.pcs[UUID].obsState.details.controlLevel) || 0; //0 for NONE, 1 for READ_OBS (OBS data), 2 for READ_USER (User data), 3 for BASIC, 4 for ADVANCED and 5 for ALL
 		}
 		
-		if (control ===5){
+		if (control >= 4){
 			if (session.director || !session.roomid){
 				if (session.obsControls!==false){
 					getById("obscontrolbutton").classList.remove("hidden"); // so they get a tip.
@@ -1696,6 +1751,7 @@ function manageSceneState(data, UUID){ // incoming obs details
 		var details = session.pcs[UUID].obsState.details;
 		if (details.scenes){
 			details.scenes.forEach(scene=>{
+				
 				var sceneButton = document.createElement("button");
 				sceneButton.dataset.obsScene = scene;
 				sceneButton.dataset.UUID = UUID;
@@ -1704,7 +1760,7 @@ function manageSceneState(data, UUID){ // incoming obs details
 					sceneButton.classList.add("pressed");
 				}
 				obsSceneNamesBox.appendChild(sceneButton);
-				if (control<5){
+				if (control<4){
 					sceneButton.disabled = true;
 					sceneButton.style.cursor = "not-allowed";
 					sceneButton.title = "Source is lacking required permissions.";
@@ -1757,9 +1813,19 @@ function processOBSCommand(msg){
 		return false;
 	}
 	
+	
+	
+	
 	try { //  {changeScene: this.dataset.obsScene}
 		if (msg.obsCommand.action && (typeof msg.obsCommand.action=="string")){
 			if (msg.obsCommand.value && (typeof msg.obsCommand.value=="string")){
+				if ((msg.obsCommand.action == "setCurrentScene") && session.filterOBSscenes && session.filterOBSscenes.length){
+					try {
+						if (!session.filterOBSscenes.includes(msg.obsCommand.value)){
+							return false;
+						}
+					} catch(e){errorlog(e);return false;}
+				}
 				window.obsstudio[msg.obsCommand.action](msg.obsCommand.value);
 			} else {
 				window.obsstudio[msg.obsCommand.action]();
@@ -1799,26 +1865,56 @@ function applySceneState(){ // guest side; tally light, etc.
 			getById("obsState").classList.remove("ondeck");
 			getById("obsState").classList.add("recording");  // TODO: this needs to check all peers to make sure it's valid
 			getById("obsState").innerHTML = "ON AIR";
+			
+			if (session.tallyStyle){
+				getById("main").classList.remove("ondeck");
+				getById("main").classList.add("recording");
+			}
+		
 		} else if (ondeck && !visibility){
 			getById("obsState").classList.remove("recording");
 			getById("obsState").classList.add("ondeck");  // TODO: this needs to check all peers to make sure it's valid
 			getById("obsState").innerHTML = "STAND BY";
+			
+			if (session.tallyStyle){
+				getById("main").classList.remove("recording");
+				getById("main").classList.add("ondeck");
+			}
+			
 		} else if (visibility){
 			getById("obsState").classList.remove("recording");
 			getById("obsState").classList.remove("ondeck");
 			getById("obsState").innerHTML = "ACTIVE";
+			
+			if (session.tallyStyle){
+				getById("main").classList.remove("recording");
+				getById("main").classList.remove("ondeck");
+			}
 		} else {
 			getById("obsState").classList.remove("recording");
 			getById("obsState").classList.remove("ondeck");
 			getById("obsState").innerHTML = "INACTIVE";
 			getById("obsState").classList.add("hidden"); // I don't think most people care to see inactive.
+			
+			if (session.tallyStyle){
+				getById("main").classList.remove("recording");
+				getById("main").classList.remove("ondeck");
+			}
 		}
 
 		if (visibility){ // BASIC TALLY LIGHT (on deck disabled)
 			getById("obsState").classList.add("onair"); // LIVE
+			if (session.tallyStyle){
+				getById("main").classList.add("onair");
+			}
 		} else {
 			getById("obsState").classList.remove("onair");
+			if (session.tallyStyle){
+				getById("main").classList.remove("onair");
+			}
 		}
+		
+		
 		
 		if (session.automute){
 			if (!visibility){
@@ -3137,6 +3233,7 @@ function createRichVideoElement(UUID){ // this function is used to check and gen
 			
 		}, { once: true });
 		
+		
 		setupIncomingVideoTracking(session.rpcs[UUID].videoElement, UUID);
 		pokeIframeAPI("video-element-created", "videosource_"+UUID, UUID);
 	}
@@ -3200,6 +3297,7 @@ function hideHomeCheck(){
 		}
 		
 		getById("audioScreenCaptureDocs").classList.add("permahide");
+		getById("audioScreenCaptureDocs2").classList.add("permahide");
 		getById("translateButton").classList.add("permahide");
 		getById("calendarButton").classList.add("permahide");
 		getById("info").classList.add("permahide");
@@ -3389,11 +3487,12 @@ function updateMixerRun(e=false){  // this is the main auto-mixing code.  It's a
 		if (session.groupView.length){
 			groups.push(...session.groupView)
 		}
-		
+		var sssid = false;
 		var soloVideo = false;
+		
 		if (session.infocus===true){
 			soloVideo = true;
-		} else if (session.infocus && (session.infocus!==true) && (session.infocus in session.rpcs)){ // if the infocus stream is connected
+		} else if (session.infocus && (session.infocus in session.rpcs)){ // if the infocus stream is connected
 			if (groups.length || session.allowNoGroup){
 				try {
 					if (groups.some(item => session.rpcs[session.infocus].group.includes(item))){
@@ -3402,6 +3501,19 @@ function updateMixerRun(e=false){  // this is the main auto-mixing code.  It's a
 				} catch(e){errorlog(e);}
 			} else {
 				soloVideo = session.infocus;
+			}
+		} else if (session.infocus2===true){
+			sssid = session.streamID;
+			console.log("2.");
+		} else if (session.infocus2 && (session.infocus2 in session.rpcs)){ // if the infocus2 stream is connected
+			if (groups.length || session.allowNoGroup){
+				try {
+					if (groups.some(item => session.rpcs[session.infocus2].group.includes(item))){
+						sssid = session.rpcs[session.infocus2].streamID;
+					}
+				} catch(e){errorlog(e);}
+			} else {
+				sssid = session.rpcs[session.infocus2].streamID;
 			}
 		}
 		
@@ -3473,7 +3585,7 @@ function updateMixerRun(e=false){  // this is the main auto-mixing code.  It's a
 			}
 		}
 		
-		if (session.screenShareElement){ // I, myself, exist
+		if (session.screenShareState && session.screenShareElement){ // I, myself, exist
 			if (!session.screenShareElementHidden){ 
 				if (session.order!==false){
 					session.screenShareElement.order=session.order;
@@ -4067,8 +4179,6 @@ function updateMixerRun(e=false){  // this is the main auto-mixing code.  It's a
 		}
 		
 		
-
-		var sssid = false;
 		var sscount = 0;
 		
 		var skip = false;
@@ -4095,57 +4205,65 @@ function updateMixerRun(e=false){  // this is the main auto-mixing code.  It's a
 			}
 		}
 		
+		
 		var mpl = session.slots || mediaPool.length;
 		
-		if (mpl>1){
-			var BB = 0;
-			var rw = 1;
-			var rh = 1;
-			var NW;
-			var NH;
-			var current;
-			for (NW=1; NW <= mpl; NW++){
-				NH = Math.ceil(mpl/NW);
-				var www = ww/NW;
-				var hhh = hh/NH;
-				if (www>hhh){
-					current = hhh * hhh * (mpl/(NW*NH));
-				} else {
-					current = www * www * (mpl/(NW*NH));
-				}
-				
-				if (current>=BB){
-					BB = current;
-					rw = NW;
-					rh = NH;
-				}
-				
-				if (mediaPool[NW-1]){
-					//if (mediaPool[NW-1].tagName == "VIDEO"){
-					if (mediaPool[NW-1].dataset.UUID){
-						if (mediaPool[NW-1].dataset.UUID in session.rpcs){
-							if (session.rpcs[mediaPool[NW-1].dataset.UUID].screenShareState){
-								sscount+=1;
-								sssid = mediaPool[NW-1].dataset.sid;
+		if (!sssid){
+			if (mpl>1){
+				var BB = 0;
+				var rw = 1;
+				var rh = 1;
+				var NW;
+				var NH;
+				var current;
+				for (NW=1; NW <= mpl; NW++){
+					NH = Math.ceil(mpl/NW);
+					var www = ww/NW;
+					var hhh = hh/NH;
+					if (www>hhh){
+						current = hhh * hhh * (mpl/(NW*NH));
+					} else {
+						current = www * www * (mpl/(NW*NH));
+					}
+					
+					if (current>=BB){
+						BB = current;
+						rw = NW;
+						rh = NH;
+					}
+					
+					if (mediaPool[NW-1]){
+						//if (mediaPool[NW-1].tagName == "VIDEO"){
+						if (mediaPool[NW-1].dataset.UUID){
+							if (mediaPool[NW-1].dataset.UUID in session.rpcs){
+								if (session.rpcs[mediaPool[NW-1].dataset.UUID].screenShareState){
+									sscount+=1;
+									sssid = mediaPool[NW-1].dataset.sid;
+								}
 							}
+						} else if (("id" in mediaPool[NW-1]) && (mediaPool[NW-1].id == "screensharesource") && session.notifyScreenShare){
+							sscount+=1;
+							sssid = mediaPool[NW-1].dataset.sid;
 						}
-					} else if (("id" in mediaPool[NW-1]) && (mediaPool[NW-1].id == "screensharesource") && session.notifyScreenShare){
-						sscount+=1;
-						sssid = mediaPool[NW-1].dataset.sid;
 					}
 				}
+			} else { var rw=1; var rh=1;}
+			
+			if (sscount>1){
+				sssid = false; // lets not maximize if more than one screen share.
 			}
-		} else { var rw=1; var rh=1;}
-		if (sscount>1){
-			sssid = false; // lets not maximize if more than one screen share.
 		}
+		
 	} catch(e){
 		errorlog(e);
 		sssid = false
 	}
 	
+	console.log(soloVideo);
+	console.log(sssid);
+	console.log(mediaPool);
 	
-	var customLayout=false;
+	var customLayout=false; 
 	
 	if (!session.notifyScreenShare && (session.scene!==false)){
 		// this is a scene, so lets assume &smallshare will disable larger screen shares since there is no one to screen share.
@@ -5475,7 +5593,7 @@ function loadQR(callback=false, value=false){
 		}
 		script.src = "./thirdparty/qrcode.min.js"; // dynamically load this only if its needed. Keeps loading time down.
 		document.head.appendChild(script);
-	} else {
+	} else if (callback){
 		callback(value);
 	}
 }
@@ -6062,10 +6180,12 @@ function setAvatarImage(tracks){
 		session.canvas.height = 2 * parseInt(height / 2);
 		session.canvas.width = 2 * parseInt(width / 2);
 		
+		session.canvasCtx.drawImage(session.avatar, 0, 0, session.canvas.width, session.canvas.height);
+		
 		session.avatar.timer = setInterval(function(){
 			log("drawing");
 			session.canvasCtx.drawImage(session.avatar, 0, 0, session.canvas.width, session.canvas.height);
-		},500);
+		},2000);
 		
 		applyMirror(true);
 		
@@ -7534,10 +7654,10 @@ async function getFaces(){
 //////
 
 var digitalZoomMain=false;
-function digitalZoom() {
+function digitalZoom(reinit=false) {
 	if (session.effect !== "7"){return;}
 	if (digitalZoomMain){
-		digitalZoomMain();
+		digitalZoomMain(reinit); 
 		return;
 	} else if (digitalZoomMain===null){
 		return;
@@ -7626,7 +7746,14 @@ function digitalZoom() {
 			timers.activelyProcessingDraw = false;
 		}
 			
-		function fde2(){
+		function fde2(reinit=false){
+			if (reinit){
+				if (session.canvasSource && session.canvasSource.srcObject && session.canvasSource.srcObject.getVideoTracks().length){
+					session.canvasSource.width = session.canvasSource.srcObject.getVideoTracks()[0].getSettings().width || 1280;
+					session.canvasSource.height = session.canvasSource.srcObject.getVideoTracks()[0].getSettings().height || 720;
+				}
+				xa = null;
+			}
 			if (!timers.activelyProcessingDraw){
 				draw();
 			}
@@ -9984,17 +10111,14 @@ function updateStats(obsvc = false) {
 }
 
 function toggleControlBar() {
-	if (getById("controlButtons").style.display != 'none') {
-		// Dont hardcode style here. Copy it over to data-style before changing to none;
-		getById("controlButtons").dataset.style = getById("controlButtons").style.display;
-		getById("controlButtons").style.display = 'none';
-	} else {
-		// Copy the style over from the data-style attribute.
-		getById("controlButtons").style.display = getById("controlButtons").dataset.style;
-	};
+	if (!getById("controlButtons").classList.contains("hidden")) {
+		getById("controlButtons").dataset.enabled = true;
+		getById("controlButtons").classList.add("hidden");
+	} else if (getById("controlButtons").dataset.enabled){
+		getById("controlButtons").classList.remove("hidden");
+		delete getById("controlButtons").dataset.enabled;
+	}
 }
-
-
 
 
 function toggleMute(apply = false, event=false) { // TODO: I need to have this be MUTE, toggle, with volume not touched.
@@ -10558,7 +10682,7 @@ function hangup2() {
 	getById("mutebutton").classList.add("hidden");
 	getById("hangupbutton2").classList.add("hidden");
 	//getById("chatbutton").classList.remove("hidden");
-	getById("controlButtons").style.display = "inherit";
+	getById("controlButtons").classList.remove("hidden");
 	//getById("mutespeakerbutton").classList.add("hidden");
 	getById("mutevideobutton").classList.add("hidden");
 	getById("screenshare2button").classList.add("hidden");
@@ -10587,7 +10711,7 @@ function reloadRequested() {
 	location.reload(); // the main reload function call
 }
 function confirmUnload(event){
-	if (!session.noExitPrompt && !session.cleanOutput && (session.permaid!==false || session.director)){
+	if (!session.noExitPrompt && !session.cleanOutput && (session.scene === false) && (session.seeding || (session.roomid!==false) || (session.permaid!==false) || session.director)){
 		(event || window.event).returnValue = "Are you sure you want to exit?"; //Gecko + IE
 		return "Are you sure you want to exit?";   
 	} else {
@@ -11347,7 +11471,7 @@ async function directTimer(ele,  event=false) { // A directing room only is cont
 	ele.classList.remove("red2");
 	if (!event || (!((event.ctrlKey) || (event.metaKey)))) {
 		if (ele.value == 0 || ele.value == 2) {
-			var getTime = await promptAlt("Time in seconds to count down", false, false, parseInt(getById("overlayClockContainer").dataset.initial));
+			var getTime = await promptAlt("Time to set count down timer", false, false, parseInt(getById("overlayClockContainer").dataset.initial), true);
 			if (!getTime){return;}
 			getById("overlayClockContainer").dataset.initial = parseInt(getTime) || 600;
 			ele.value = 1;
@@ -11482,7 +11606,7 @@ async function directRoomTimer(ele,  event=false) { // A directing room only is 
 	
 	if (!event || (!((event.ctrlKey) || (event.metaKey)))) {
 		if (ele.value == 0 || ele.value == 2) {
-			var getTime = await promptAlt("Time in seconds to count down", false, false, parseInt(getById("overlayClockContainer").dataset.initial));
+			var getTime = await promptAlt("Time to set count down timer", false, false, parseInt(getById("overlayClockContainer").dataset.initial), true);
 			if (!getTime){return;}
 			getTime = parseInt(getTime);
 			getById("overlayClockContainer").dataset.initial = getTime || 600;
@@ -11785,8 +11909,8 @@ function remoteLowerhands(UUID) {
 	session.sendRequest(msg, UUID);
 
 	try{
-		getById("hands_"+UUID).style.display="none";
-		session.rpcs[UUID].remoteRaisedHandElement.style.display = "none";
+		getById("hands_"+UUID).classList.add("hidden");
+		session.rpcs[UUID].remoteRaisedHandElement.classList.add("hidden");
 	} catch(e){}
 	return true;
 }
@@ -11799,11 +11923,11 @@ function remoteMute(ele, event=false, skipSend=false) {
 		if (val == 1){
 			ele.value = 0;
 			ele.classList.remove("pressed");
-			ele.innerHTML = '<i class="las la-microphone-slash" style="color:#900"></i>	<span data-translate="mute-guest" >mute guest</span>';
+			ele.innerHTML = '<i class="las la-microphone-slash" style="color:#900"></i>';
 		} else {
 			ele.value = 1;
 			ele.classList.add("pressed");
-			ele.innerHTML = '<i class="las la-microphone-slash" style="color:#900"></i>	<span data-translate="unmute-guest" >un-mute guest</span>';
+			ele.innerHTML = '<i class="las la-microphone-slash" style="color:#900"></i>';
 		}
 		miniTranslate(ele);
 	}
@@ -12286,7 +12410,7 @@ async function publishScreen() {
 			if (session.screensharebutton) {
 				getById("screensharebutton").className = "float2";
 			}
-			getById("controlButtons").style.display = "flex";
+			getById("controlButtons").classList.remove("hidden");
 			getById("helpbutton").style.display = "inherit";
 			getById("reportbutton").style.display = "";
 		} else if (session.cleanish && session.recordLocal!==false){
@@ -12297,29 +12421,29 @@ async function publishScreen() {
 			getById("mutevideobutton").classList.add("hidden");
 			getById("hangupbutton").classList.add("hidden");
 			getById("hangupbutton2").classList.add("hidden");
-			getById("controlButtons").style.display = "flex";
+			getById("controlButtons").classList.remove("hidden");
 			getById("settingsbutton").classList.add("hidden");
 			getById("screenshare2button").classList.add("hidden");
 			getById("screensharebutton").classList.add("hidden");
 			getById("queuebutton").classList.add("hidden");
 		} else {
-			getById("controlButtons").style.display = "none";
+			getById("controlButtons").classList.add("hidden");
 		}
 
 		if (session.chatbutton === true) {
 			getById("chatbutton").classList.remove("hidden");
-			getById("controlButtons").style.display = "flex";
+			getById("controlButtons").classList.remove("hidden");
 		} else if (session.chatbutton === false) {
 			getById("chatbutton").classList.add("hidden");
 		}
 		
 		if (session.screensharebutton === true) {
-			getById("controlButtons").style.display = "flex";
+			getById("controlButtons").classList.remove("hidden");
 			getById("screensharebutton").className = "float2";
 		}
 
 		if (session.hangupbutton === true){
-			getById("controlButtons").style.display = "flex";
+			getById("controlButtons").classList.remove("hidden");
 			getById("hangupbutton").className = "float";
 		}
 
@@ -12450,6 +12574,14 @@ async function joinDataMode(){ // join the room, but without publishing anything
 		getById("head3").classList.add('hidden');
 		getById("head3a").classList.add('hidden');
 		joinRoom(session.roomid);
+	} else if (session.view){
+		window.onresize = updateMixer;
+		play();
+		if (session.permaid!==false){
+			session.postPublish();
+		}
+	} else if (session.permaid!==false){
+		session.postPublish();
 	}
 }
 
@@ -12497,12 +12629,9 @@ function publishWebcam(btn = false) {
 		window.onresize = updateMixer;
 		window.onorientationchange = function(){setTimeout(async function(){
 			if (session.forceAspectRatio){
-			//	if (window.matchMedia("(orientation: portrait)").matches){
-			//		await updateCameraConstraints("aspectRatio", 1.0/session.forceAspectRatio);
-			//	} else {
 					await updateCameraConstraints("aspectRatio", session.forceAspectRatio);
-			//	}
 			}
+			if (session.effect && (session.effect === "7")){digitalZoom(true);}
 			updateForceRotate();
 			updateMixer();
 		}, 200);};
@@ -12563,7 +12692,7 @@ function publishWebcam(btn = false) {
 	getById("head1").className = 'hidden';
 
 
-	if (!(session.cleanOutput)) {
+	if (!session.cleanOutput){
 		getById("mutebutton").classList.remove("hidden");
 		getById("mutespeakerbutton").classList.remove("hidden");
 		//getById("mutespeakerbutton").className="float";
@@ -12593,10 +12722,14 @@ function publishWebcam(btn = false) {
 					getById("screensharebutton").className = "float";
 					getById("screenshare3button").className = "float hidden";
 					getById("screenshare2button").className = "float hidden";
-				} else {
+				} else if (session.screenshareType===2){
 					getById("screenshare2button").className = "float";
 					getById("screensharebutton").className = "float hidden";
 					getById("screenshare3button").className = "float hidden";
+				} else {
+					getById("screenshare3button").className = "float";
+					getById("screensharebutton").className = "float hidden";
+					getById("screenshare2button").className = "float hidden";
 				}
 			} else {
 				getById("screensharebutton").className = "float";
@@ -12604,7 +12737,7 @@ function publishWebcam(btn = false) {
 				getById("screenshare3button").className = "float hidden";
 			}
 		}
-		getById("controlButtons").style.display = "flex";
+		getById("controlButtons").classList.remove("hidden");
 		getById("helpbutton").style.display = "inherit";
 		getById("reportbutton").style.display = "";
 	} else if (session.cleanish && session.recordLocal!==false){
@@ -12615,18 +12748,18 @@ function publishWebcam(btn = false) {
 		getById("mutevideobutton").classList.add("hidden");
 		getById("hangupbutton").classList.add("hidden");
 		getById("hangupbutton2").classList.add("hidden");
-		getById("controlButtons").style.display = "flex";
+		getById("controlButtons").classList.remove("hidden");
 		getById("settingsbutton").classList.add("hidden");
 		getById("screenshare2button").classList.add("hidden");
 		getById("screensharebutton").classList.add("hidden");
 		getById("queuebutton").classList.add("hidden");
 	} else {
-		getById("controlButtons").style.display = "none";
+		getById("controlButtons").classList.add("hidden");
 	}
 	
 	if (session.chatbutton === true) {
 		getById("chatbutton").classList.remove("hidden");
-		getById("controlButtons").style.display = "inherit";
+		getById("controlButtons").classList.remove("hidden");
 	} else if (session.chatbutton === false) {
 		getById("chatbutton").classList.add("hidden");
 	}
@@ -13185,11 +13318,11 @@ session.publishIFrame = function(iframeURL){
 	if (!(session.cleanOutput)){
 		getById("chatbutton").className="float";
 		getById("hangupbutton").className="float";
-		getById("controlButtons").style.display="flex";
+		getById("controlButtons").classList.remove("hidden");
 		getById("helpbutton").style.display = "inherit";
 		getById("reportbutton").style.display = "";
 	} else {
-		getById("controlButtons").style.display="none";
+		getById("controlButtons").classList.add("hidden");
 	}
 	
 	if (session.chatbutton === false) {
@@ -13871,6 +14004,14 @@ function audioMeter(mediaStreamSource, audioContext) {
 					session.activelySpeaking=false;
 					clearTimeout(timer);
 					timer = setTimeout(function(){toggleSpeakerMute(true);},250);  // okay, sicne this is quietOthers
+				}
+			}
+			
+			if (session.pushLoudness==true){
+				var loudnessObj = {};
+				loudnessObj[session.streamID] = parseInt(total);
+				if (isIFrame){
+					parent.postMessage({"loudness": loudnessObj, "action":"loudness", "value":total}, session.iframetarget);
 				}
 			}
 			
@@ -14852,12 +14993,9 @@ async function createRoomCallback(passAdd, passAdd2) {
 	window.onresize = updateMixer;
 	window.onorientationchange = function(){setTimeout(async function(){
 			if (session.forceAspectRatio){
-			//	if (window.matchMedia("(orientation: portrait)").matches){
-			//		await updateCameraConstraints("aspectRatio", 1.0/session.forceAspectRatio);
-			//	} else {
-					await updateCameraConstraints("aspectRatio", session.forceAspectRatio);
-			//	}
+				await updateCameraConstraints("aspectRatio", session.forceAspectRatio);
 			}
+			if (session.effect && (session.effect === "7")){digitalZoom(true);}
 			updateForceRotate();
 			updateMixer();
 		}, 200);};
@@ -14906,7 +15044,7 @@ async function createRoomCallback(passAdd, passAdd2) {
 			getById("queuebutton").classList.remove("hidden");
 		}
 		getById("chatbutton").classList.remove("hidden");
-		getById("controlButtons").style.display = "inherit";
+		getById("controlButtons").classList.remove("hidden");
 		getById("mutespeakerbutton").classList.remove("hidden");
 		getById("websitesharebutton").classList.remove("hidden");
 		//getById("screensharebutton").classList.remove("hidden");
@@ -14940,12 +15078,12 @@ async function createRoomCallback(passAdd, passAdd2) {
 		
 	} else {
 		getById("miniPerformer").style.display = "none";
-		getById("controlButtons").style.display = "none";
+		getById("controlButtons").classList.add("hidden");
 	}
 
 	if (session.chatbutton === true) {
 		getById("chatbutton").classList.remove("hidden");
-		getById("controlButtons").style.display = "inherit";
+		getById("controlButtons").classList.remove("hidden");
 	} else if (session.chatbutton === false) {
 		getById("chatbutton").classList.add("hidden");
 	}
@@ -15072,7 +15210,7 @@ function getDirectorSettings(scene=false){
 	return settings;
 }
 
-function requestInfocus(ele) {
+function requestInfocus(ele, evt=null, value=null) {
 	try{
 		var sid = ele.dataset.sid;
 	} catch(e){
@@ -15085,6 +15223,22 @@ function requestInfocus(ele) {
 		}
 	}
 
+	if (value!==null){
+		if (value){
+			ele.value == 0; // we will toggle it in a second anyways.
+		} else {
+			ele.value == 1;
+		}
+	}
+	
+	var special = false;
+	if (evt){
+		special = evt.ctrlKey || evt.metaKey || false;
+		if (special){
+			special = true;
+		}
+	}
+
 	if (ele.value == 1) {
 		ele.value = 0;
 		ele.classList.remove("pressed");
@@ -15093,7 +15247,11 @@ function requestInfocus(ele) {
 		session.sendMessage(actionMsg);
 	} else {
 		var actionMsg = {};
-		actionMsg.infocus = sid;
+		if (special){
+			actionMsg.infocus2 = sid;
+		} else {
+			actionMsg.infocus = sid;
+		}
 		session.sendMessage(actionMsg);
 		
 		var eles = document.querySelectorAll('[data-action-type="solo-video"]');
@@ -15210,6 +15368,7 @@ async function createDirectorOnlyBox() {
 	buttons += "<div title='Does not impact scene order.' class='shift'><i class='las la-angle-left' onclick='shiftPC(this,-1, true);'></i><i class='las la-angle-right' onclick='shiftPC(this,1, true)';></i></div>\
 		<div class='streamID' style='user-select: none;'>ID: <span style='user-select: text;'>" + session.streamID + "</span>\
 			<i class='las la-copy' data-sid='" + session.streamID + "'  onclick='copyFunction(this.dataset.sid,event)' title='Copy this Stream ID to the clipboard' style='cursor:pointer'></i>\
+			<i class='las la-window-minimize' onclick='minimizeMe(this, \'container_director\')' title='Minimize this control box' style='cursor:pointer'></i>\
 			<span id='label_director' class='addALabel' title='Click here to edit the label for this stream. Changes will propagate to all viewers of this stream' data-translate='add-a-label'>"+miscTranslations["add-a-label"]+"</span>\
 		</div>\
 		<div id='videoContainer_director'></div>";
@@ -15372,6 +15531,7 @@ async function createDirectorScreenshareOnlyBox() { // sstype=3
 	buttons += "<div title='Does not impact scene order.' class='shift'><i class='las la-angle-left' onclick='shiftPC(this,-1, true);'></i><i class='las la-angle-right' onclick='shiftPC(this,1, true)';></i></div>\
 		<div class='streamID' style='user-select: none;'>ID: <span style='user-select: text;'>" + session.streamID+":s</span>\
 			<i class='las la-copy' data-sid='" + session.streamID+":s'  onclick='copyFunction(this.dataset.sid,event)' title='Copy this Stream ID to the clipboard' style='cursor:pointer'></i>\
+			<i class='las la-window-minimize' onclick='minimizeMe(this, \'container_screen_director\')' title='Minimize this control box'></i>\
 			<span id='label_director' class='addALabel' title='Click here to edit the label for this stream. Changes will propagate to all viewers of this stream' data-translate='add-a-label'>"+miscTranslations["add-a-label"]+"</span>\
 		</div>\
 		<div id='videoScreenContainer_director'></div>";
@@ -15881,7 +16041,7 @@ function createControlBox(UUID, soloLink, streamID) {
 			</div>";
 	}
 	
-	controls.innerHTML += "<button data-action-type=\"hand-raised\" id='" + handsID + "' class='lowerRaisedHand' title=\"This guest raised their hand. Click this to clear notification.\" onclick=\"remoteLowerhands('" + UUID + "');\">\
+	controls.innerHTML += "<button data-action-type=\"hand-raised\" id='" + handsID + "' class='hidden lowerRaisedHand' title=\"This guest raised their hand. Click this to clear notification.\" onclick=\"remoteLowerhands('" + UUID + "');\">\
 			<i class=\"las la-hand-paper\"></i>\
 			<span data-translate=\"user-raised-hand\">Lower Raised Hand</span>\
 		</button>\
@@ -15927,6 +16087,7 @@ function createControlBox(UUID, soloLink, streamID) {
 	}
 	buttons += "<div title='Does not impact scene order.' class='shift'><i class='las la-angle-left' data--u-u-i-d='"+UUID+"' onclick='shiftPC(this,-1);'></i><span onclick='lockPosition(this);' style='cursor:pointer;' data-locked='0' data--u-u-i-d='"+UUID+"' id='position_"+UUID+"'><i class='las la-lock-open'></i></span><i class='las la-angle-right' data--u-u-i-d='"+UUID+"' onclick='shiftPC(this,1);'></i></div><div class='streamID' style='user-select: none;'>ID: <span style='user-select: text;'>" + streamID + "</span>\
 	<i class='las la-copy' data-sid='" + streamID + "' onclick='copyFunction(this.dataset.sid,event)' title='Copy this Stream ID to the clipboard' style='cursor:pointer'></i>\
+	<i class='las la-window-minimize' data--u-u-i-d='"+UUID+"' onclick='minimizeMe(this)' title='Minimize this control box' style='cursor:pointer'></i>\
 	<span id='label_" + UUID + "' class='addALabel' title='Click here to edit the label for this stream. Changes will propagate to all viewers of this stream'></span>\
 	</div>";
 
@@ -16056,6 +16217,14 @@ function createControlBox(UUID, soloLink, streamID) {
 	}
 }
 
+
+function minimizeMe(button, director=false){
+	if (!director){
+		getById("container_"+button.dataset.UUID).classList.toggle("minimized");
+	} else {
+		getById(director).classList.toggle("minimized");
+	}
+}
 function cycleCameras(){
 	if (session.screenShareState) {
 		warnUser("Stop the screen-share first.");
@@ -18745,7 +18914,7 @@ if (navigator.userAgent.toLowerCase().indexOf(' electron/') > -1) {  // this ena
 						///
 						const stream = await window.navigator.mediaDevices.getUserMedia(new_constraints);
 						resolve(stream);
-				    } else if (session.screenshare!==true){
+				    } else if (session.screenshare && (session.screenshare!==true)){
 						var sscid=null;
 						const sources = await ipcRenderer.sendSync('getSources',{types: ['window']});
 						for (var i=0; i<sources.length;i++){
@@ -19388,17 +19557,18 @@ function toggleBufferSettings(UUID){
 function toggleRoomSettings(){
 	toggle(getById('roomSettings'));
 	if (getById('roomSettings').style.display=="none"){
-		getById("modalBackdrop").innerHTML = ''; // Delete modal
-		getById("modalBackdrop").remove();
+		//getById("modalBackdrop").innerHTML = ''; // Delete modal
+		//getById("modalBackdrop").remove();
 	} else {
-		getById("modalBackdrop").innerHTML = ''; // Delete modal
-		getById("modalBackdrop").remove();
+	//getById("modalBackdrop").innerHTML = ''; // Delete modal
+		//getById("modalBackdrop").remove();
 		zindex = 25;
 		getById('roomSettings').style.zIndex = 25;
 		var modalTemplate = `<div id="modalBackdrop" style="z-index:24"></div>`;
-		document.body.insertAdjacentHTML("beforeend", modalTemplate); // Insert modal at body end
-		document.getElementById("modalBackdrop").addEventListener("click", toggleRoomSettings);
+	//	document.body.insertAdjacentHTML("beforeend", modalTemplate); // Insert modal at body end
+	//	document.getElementById("modalBackdrop").addEventListener("click", toggleRoomSettings);
 		document.getElementById('trbSettingInput').value = session.totalRoomBitrate;
+		document.getElementById('trbSettingInputManual').value = session.totalRoomBitrate;
 		document.getElementById('trbSettingInputFeedback').innerHTML = session.totalRoomBitrate;
 	}
 }
@@ -19610,7 +19780,7 @@ function checkBasicStreamsExist(){
 		} else if (document.getElementById("previewWebcam")) {
 			session.videoElement = document.getElementById("previewWebcam");
 		} else {
-			session.videoElement = createVideoElement();
+			session.videoElement = createVideoElement(); 
 		}
 		
 		session.videoElement.addEventListener("playing", (e)=>{
@@ -21586,10 +21756,26 @@ session.publishStream = function(v){ //  stream is used to generated an SDP
 	
 }; // publishStream
 
+function stickyMessage(message){
+	var textOverlay = getById("stickyMsgs");
+	if (textOverlay) {
+		var spanOverlay = document.createElement("span");
+		spanOverlay.innerHTML = message;
+		var closeBtn = document.createElement("button");
+		closeBtn.className = "overlayCloseBtn";
+		closeBtn.innerText = "X";
+		closeBtn.onclick = function(){this.parentNode.remove();};
+		textOverlay.appendChild(spanOverlay);
+		spanOverlay.appendChild(closeBtn);
+		textOverlay.classList.remove("hidden");
+	}
+}
+
 session.postPublish = async function(){
 	log("Post publish");
 	if (session.welcomeMessage){
-		getChatMessage(session.welcomeMessage, false, true, true);
+		stickyMessage(session.welcomeMessage);
+		// getChatMessage(session.welcomeMessage, false, true, true);
 	}
 	
 	if (session.welcomeImage){
@@ -21771,12 +21957,9 @@ async function publishScreen2(constraints, audioList=[], audio=true, overrideFra
 				window.onresize = updateMixer;
 				window.onorientationchange = function(){setTimeout(async function(){
 					if (session.forceAspectRatio){
-						//if (window.matchMedia("(orientation: portrait)").matches){
-						//	await updateCameraConstraints("aspectRatio", 1.0/session.forceAspectRatio);
-						//} else {
-							await updateCameraConstraints("aspectRatio", session.forceAspectRatio);
-						//}
+						await updateCameraConstraints("aspectRatio", session.forceAspectRatio);
 					}
+					if (session.effect && (session.effect === "7")){digitalZoom(true);}
 					updateForceRotate();
 					updateMixer();
 				}, 200);};
@@ -21955,12 +22138,9 @@ async function publishScreen2(constraints, audioList=[], audio=true, overrideFra
 			window.onresize = updateMixer;
 			window.onorientationchange = function(){setTimeout(async function(){
 				if (session.forceAspectRatio){
-					//if (window.matchMedia("(orientation: portrait)").matches){
-					//	await updateCameraConstraints("aspectRatio", 1.0/session.forceAspectRatio);
-					//} else {
-						await updateCameraConstraints("aspectRatio", session.forceAspectRatio);
-					//}
+					await updateCameraConstraints("aspectRatio", session.forceAspectRatio);
 				}
+				if (session.effect && (session.effect === "7")){digitalZoom(true);}
 				updateForceRotate();
 				updateMixer();
 			}, 200);};
@@ -22310,11 +22490,11 @@ session.hostFile = function(ele, event){ // webcam stream is used to generated a
 	if (!(session.cleanOutput)){
 		getById("chatbutton").className="float";
 		getById("hangupbutton").className="float";
-		getById("controlButtons").style.display="flex";
+		getById("controlButtons").classList.remove("hidden");
 		getById("helpbutton").style.display = "inherit";
 		getById("reportbutton").style.display = "";
 	} else {
-		getById("controlButtons").style.display="none";
+		getById("controlButtons").classList.add("hidden");
 	}
 	
 	
@@ -22431,11 +22611,11 @@ session.publishFile = function(ele, event){ // webcam stream is used to generate
 	if (!(session.cleanOutput)){
 		getById("chatbutton").className="float";
 		getById("hangupbutton").className="float";
-		getById("controlButtons").style.display="flex";
+		getById("controlButtons").classList.remove("hidden");
 		getById("helpbutton").style.display = "inherit";
 		getById("reportbutton").style.display = "";
 	} else {
-		getById("controlButtons").style.display="none";
+		getById("controlButtons").classList.add("hidden");
 	}
 	
 	var bigPlayButton = document.getElementById("bigPlayButton");
@@ -23363,20 +23543,22 @@ function setupClosedCaptions() {
 }
 
 
-async function requestVideoRecord(ele) {
-	var UUID = ele.dataset.UUID
-	if (ele.classList.contains("pressed")) {
+async function requestVideoRecord(ele, state=null, bitrate=null) {
+	var UUID = ele.dataset.UUID;
+	if (!state && ele.classList.contains("pressed")) {
 		var msg = {};
 		msg.requestVideoRecord = false;
 		msg.UUID = UUID;
 		session.sendRequest(msg, msg.UUID);
 		ele.classList.remove("pressed");
-	} else {
+	} else if (state==null || state){
 		var msg = {};
 		msg.requestVideoRecord = true;
 		msg.UUID = UUID;
-		window.focus();
-		var bitrate = await promptAlt(miscTranslations["what-bitrate"], false, false, 6000);
+		if (bitrate===null){
+			window.focus();
+			bitrate = await promptAlt(miscTranslations["what-bitrate"], false, false, 6000);
+		}
 		if (bitrate) {
 			msg.value = bitrate;
 			session.sendRequest(msg, msg.UUID);
@@ -27052,6 +27234,14 @@ function previewWebcam() {
 	} else {
 		constraint.video = true;
 	}
+	
+	window.onorientationchange = function(){setTimeout(async function(){
+		if (session.forceAspectRatio){
+			await updateCameraConstraints("aspectRatio", session.forceAspectRatio);
+		}
+		if (session.effect && (session.effect === "7")){digitalZoom(true);}
+		updateForceRotate(); 
+	}, 200);};
 
 	if ((constraint.video === false) && (constraint.audio === false)){
 		if (session.autostart) {
@@ -27590,6 +27780,7 @@ function generateQRPageCallback(hash) {
 			getById("qrcode").title = "";
 			if (getById("qrcode").getElementsByTagName('img').length) {
 				getById("qrcode").getElementsByTagName('img')[0].style.cursor = "none";
+				getById("qrcode").getElementsByTagName('img')[0].style.margin = "0 auto";
 			}
 		}, 100); // i really hate the title overlay that the qrcode function makes
 
@@ -30821,7 +31012,7 @@ function fftWaveform( source, UUID, trackid){  // append the delay Node to the t
 			loudness = Math.sqrt(Mean)*10;
 			session.rpcs[uuid].stats.Audio_Loudness = parseInt(loudness);
 			
-			if (session.pushLoudness==true){
+			if (session.pushLoudness==true){ 
 				var loudnessObj = {};
 				loudnessObj[session.rpcs[uuid].streamID] = session.rpcs[uuid].stats.Audio_Loudness;
 				
@@ -30885,8 +31076,6 @@ function audioMeterGuest(mediaStreamSource, UUID, trackid){
 					parent.postMessage({"loudness": loudnessObj, "action":"loudness", "value":session.rpcs[UUID].stats.Audio_Loudness, "UUID":UUID}, session.iframetarget);
 				}
 			}
-			
-			
 			
 			try{
 				clearTimeout(session.rpcs[UUID].inboundAudioPipeline[trackid].analyser.interval);
@@ -30973,9 +31162,9 @@ function effectsDynamicallyUpdate(event, ele){
 		return;
 	}
 	
-	if (session.effect === "7"){
+	if (session.effect === "7"){ // digitalZoom
 		getById("selectEffectAmount").style.display = "block";
-		getById("selectEffectAmount3").style.display = "block";
+		getById("selectEffectAmount3").style.display = "block"; 
 		session.effectValue = 1.0;
 		getById("selectEffectAmountInput").min = 1;
 		getById("selectEffectAmountInput").max = 1.99;
@@ -31148,7 +31337,7 @@ async function loadScript(url, callback=false){
 }
 
 var tokenClient=false;
-function YoutubeChatInterface(){ // this lets us query Youtube for chat messages, but its quota limited :(
+function YoutubeChatInterface(remote=false){ // this lets us query Youtube for chat messages, but its quota limited :(
 	if (!tokenClient){
 		tokenClient=true;
 	} else {
@@ -31177,9 +31366,17 @@ function YoutubeChatInterface(){ // this lets us query Youtube for chat messages
 			gapi.client.setToken(JSON.parse(saved));
 			listBroadcasts();
 		} else if (gapi.client.getToken() === null) {
-			warnUser("<button onclick='(function(){tokenClient.requestAccessToken({prompt: \"consent\"});})()'>Grant Access to Youtube Chat</button>", false, false);
+			if (remote){
+				tokenClient.requestAccessToken({prompt:"consent"});
+			} else {
+				warnUser("<button onclick='(function(){tokenClient.requestAccessToken({prompt: \"consent\"});})()'>Grant Access to Youtube Chat</button>", false, false);
+			}
 		} else {
-			warnUser("<button onclick='(function(){this.remove();tokenClient.requestAccessToken({prompt: \"\"});})()'>Grant Access to Youtube Chat</button>", false, false);	
+			if (remote){
+				tokenClient.requestAccessToken({prompt: ""});	
+			} else {
+				warnUser("<button onclick='(function(){this.remove();tokenClient.requestAccessToken({prompt: \"\"});})()'>Grant Access to Youtube Chat</button>", false, false);	
+			}
 		}
 	}
 	
@@ -31705,11 +31902,19 @@ function whipClient(){ // publish to whip.vdo.ninja with obs v29 I think, to use
 					var resp = await processWHIP(data);
 					if (resp){
 						var ret = {};
-						data.result = resp;
-						ret.callback = data;
-						log(ret);
-						socket.send(JSON.stringify(ret));
+						var get = data.get;
+						data = {};
+						if (get){
+							data.get = get;
+							data.result = resp;
+							ret.callback = data;
+							log(ret);
+							socket.send(JSON.stringify(ret));
+						}
 					}
+				} else if ("delete" in data){
+					warnlog("WHIP Client is actively disconnecting");
+					// session.closeRPC(i, true);
 				}
 			}
 		});
@@ -31728,17 +31933,26 @@ async function processWHIP(data){
 	if (data.streamID){
 		msg.streamID = data.streamID;
 	} else {
-		msg.streamID = session.generateRandomString(15);  // fake
+		msg.streamID = session.generateRandomString(15);  // fake 
 	}
+	log("setupIncoming");
 	await session.setupIncoming(msg); // could end up setting up the peer the wrong way.
-	 
+	session.rpcs[msg.UUID].whip = true;
 	var callback = null;
 	var promise = new Promise((resolve, reject) => {
 		callback = resolve;
 	});
-	
 	session.rpcs[msg.UUID].whipCallback = callback;
+	
+	var callback2 = null;
+	var promise2 = new Promise((resolve, reject) => {
+		callback2 = resolve;
+	});
+	session.rpcs[msg.UUID].whipCallback2 = callback2;
+	
+	log("CONNECT PEEER");
 	session.connectPeer(msg);
+	log("CONNECT PEEER DONE");
 	
 	if (!session.manual || !session.director){
 		window.onresize = updateMixer;
@@ -31747,7 +31961,44 @@ async function processWHIP(data){
 		};
 	}
 	
-	return await promise; // return SDP answer for the remote WHIP request
+	log("ICE BUNDLE PROMISE");
+	setTimeout(function(UUID){
+		log("ICE BUNDLE PROMISE TIMEOUT");
+		if (session.rpcs[UUID].whipCallback2){
+			session.rpcs[UUID].whipCallback2([...session.rpcs[UUID].iceBundle]);
+			clearTimeout(session.rpcs[UUID].iceTimer);
+			session.rpcs[UUID].iceTimer = null;
+			session.rpcs[UUID].iceBundle = []
+			session.rpcs[UUID].whipCallback2 = null;
+			
+		}
+	},3000,msg.UUID);
+	var iceBundle = await promise2; // waiting for ICE GATHER COMPLETE
+	session.rpcs[msg.UUID].whipCallback2 = null;
+	
+	
+	
+	//log("ICE BUNDLE");
+	//log(iceBundle);
+	
+	//var insertIce = "";
+	
+	//iceBundle.forEach(ice=>{
+	//	if (ice.candidate){
+	//		insertIce += "a="+ice.candidate+"\r\n";
+	//	}
+	//});
+	
+	await promise;
+	session.rpcs[msg.UUID].whipCallback = null;
+	sdpAnswer = session.rpcs[msg.UUID].localDescription.sdp;
+	
+	//sdpAnswer = sdpAnswer.replace("a=ice-ufrag", insertIce+"a=ice-ufrag");
+	
+	log("completed");
+	warnlog(sdpAnswer);
+	
+	return sdpAnswer; // return SDP answer for the remote WHIP request
 }
 
 var queuedSendingAPIMsgs = [];
@@ -32071,6 +32322,22 @@ function setupCommands(){
 		return true;
 	};
 	
+	commands.soloVideo = function(value=null,value2=null){
+		var element = getById("highlightDirector");
+		if (value && (value == "toggle")){
+			return requestInfocus(element);
+		} else if (value && (value !== "null")){
+			return requestInfocus(element, null, true);
+		} else if (value && (value === "null")){
+			return requestInfocus(element);
+		} else {
+			return requestInfocus(element, null, false);
+		}
+		return false;
+	}; 
+	commands.highlight = function(value=null,value2=null){
+		return commands.soloVideo(value, value2);
+	}; 
 	
 	commands.layout = function(value=null,value2=null){
 		try {
@@ -33523,7 +33790,7 @@ function createControlBoxScreenshare(UUID, soloLink, streamID) {
 			</div>";
 	}
 	
-	controls.innerHTML += "<button data-action-type=\"hand-raised\" id='" + handsID + "' class='lowerRaisedHand' title=\"This guest raised their hand. Click this to clear notification.\" onclick=\"remoteLowerhands('" + UUID + "');\">\
+	controls.innerHTML += "<button data-action-type=\"hand-raised\" id='" + handsID + "' class='hidden lowerRaisedHand' title=\"This guest raised their hand. Click this to clear notification.\" onclick=\"remoteLowerhands('" + UUID + "');\">\
 			<i class=\"las la-hand-paper\"></i>\
 			<span data-translate=\"user-raised-hand\">Lower Raised Hand</span>\
 		</button>\
@@ -33570,6 +33837,7 @@ function createControlBoxScreenshare(UUID, soloLink, streamID) {
 	
 	buttons += "<div title='Does not impact scene order.' class='shift'><i class='las la-angle-left' data--u-u-i-d='"+UUID+"' onclick='shiftPC(this,-1);'></i><span onclick='lockPosition(this);' style='cursor:pointer;' data-locked='0' data--u-u-i-d='"+UUID+"' id='position_"+UUID+"'><i class='las la-lock-open'></i></span><i class='las la-angle-right' data--u-u-i-d='"+UUID+"' onclick='shiftPC(this,1);'></i></div><div class='streamID' style='user-select: none;'>ID: <span style='user-select: text;'>" + streamID + "</span>\
 	<i class='las la-copy' data-sid='" + streamID + "' onclick='copyFunction(this.dataset.sid,event)' title='Copy this Stream ID to the clipboard' style='cursor:pointer'></i>\
+	<i class='las la-window-minimize' data--u-u-i-d='"+UUID+"' onclick='minimizeMe(this)' title='Minimize this control box' style='cursor:pointer'></i>\
 	<span id='label_" + UUID + "' class='addALabel' title='Click here to edit the label for this stream. Changes will propagate to all viewers of this stream'></span>\
 	</div>";
 	
