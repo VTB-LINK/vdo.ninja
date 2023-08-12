@@ -2543,15 +2543,15 @@
 				sdpSemantics: 'unified-plan'
 			};
 			var turn = {}; // Just an example entry for a basic TURN server 
-			turn.username = "oldking139";
-			turn.credential = "abdc-f198881ef111";
-			turn.urls = ["turn:turn.vtb.link:3478"]; 
+			turn.username = "vlinkcn01coturn";
+			turn.credential = "63eb8593-e82d-4159-81d7-130a8438c024";
+			turn.urls = ["turn:coturn.vdo.asf.ink:3478"]; 
 			session.configuration.iceServers.push(turn);
 			
 			turn = {}; // second turn server example entry. 
-			turn.username = "oldking139";
-			turn.credential = "abdc-f198881ef111";
-			turn.urls = ["turn:turn.vtb.link:3478"]; 
+			turn.username = "vlinkcn01coturn";
+			turn.credential = "63eb8593-e82d-4159-81d7-130a8438c024";
+			turn.urls = ["turn:coturn.vdo.asf.ink:3478"]; 
 			session.configuration.iceServers.push(turn);
 			///////////// ------------ END OF TURN SETUP SECTION -------
 
@@ -2600,7 +2600,7 @@
 			// session.wss = "wss://wss.vdo.ninja:443"; // US-East (Default)
 
 			//  If wanting to fully-self-host, uncomment the following and deploy your own websocket server; good for air-gapped deployments
-			session.wss = "wss://wss.vdo.vtb.link:443"; // https://github.com/steveseguin/websocket_server 
+			session.wss = "wss://wss.vdo.asf.ink:443"; // https://github.com/steveseguin/websocket_server 
 			session.customWSS = true;
 			//////
 			
